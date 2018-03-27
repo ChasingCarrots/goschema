@@ -2,7 +2,6 @@ package {{ .Package }}
 
 import (
 	"io"
-	"github.com/chasingcarrots/gobinary"
 	"github.com/chasingcarrots/goschema"
 {{ range .Imports }}
 	{{ . }}

@@ -222,8 +222,12 @@ func (*MapSerializer) SizeOf() uint32 {
 	return 4
 }
 
-func (*MapSerializer) CanSerialize(target Target) bool {
-	return target.Type.Kind() == reflect.Map
+func (*MapSerializer) CanSerialize(context *Context, target Target) bool {
+	if target.Type.Kind() != reflect.Map {
+		return false
+	}
+	return context.FindSerializer(TypeTarget(target.Type.Elem())) != nil &&
+		context.FindSerializer(TypeTarget(target.Type.Key())) != nil
 }
 
 func (*MapSerializer) IsVariableSize() bool {

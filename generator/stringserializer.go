@@ -66,7 +66,7 @@ func (*StringSerializer) SizeOf() uint32 {
 	return 4
 }
 
-func (*StringSerializer) CanSerialize(target Target) bool {
+func (*StringSerializer) CanSerialize(context *Context, target Target) bool {
 	return target.Type.Kind() == reflect.String
 }
 

@@ -151,8 +151,11 @@ func (*ListSerializer) SizeOf() uint32 {
 	return 4
 }
 
-func (*ListSerializer) CanSerialize(target Target) bool {
-	return target.Type.Kind() == reflect.Slice || target.Type.Kind() == reflect.Array
+func (*ListSerializer) CanSerialize(context *Context, target Target) bool {
+	if target.Type.Kind() != reflect.Slice && target.Type.Kind() != reflect.Array {
+		return false
+	}
+	return context.FindSerializer(TypeTarget(target.Type.Elem())) != nil
 }
 
 func (*ListSerializer) IsVariableSize() bool {

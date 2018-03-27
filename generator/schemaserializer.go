@@ -78,7 +78,7 @@ func (*SchemaSerializer) SizeOf() uint32 {
 	return 4
 }
 
-func (*SchemaSerializer) CanSerialize(target Target) bool {
+func (*SchemaSerializer) CanSerialize(context *Context, target Target) bool {
 	return target.Type.Kind() == reflect.Struct
 }
 

@@ -18,18 +18,19 @@ type SchemaMetaData struct {
 	Name                 string
 	ID                   int
 	HeaderSize           uint32
+	Imports              map[string]struct{}
 	ready, inPreparation bool
 }
 
 type Context struct {
-	imports      map[string]struct{}
-	outputPath   string // where the
+	outputPath   string
 	packagePath  string // path of the package for the output files
 	serializers  []TypeSerializer
 	tokenCounter int
 
 	schemaMetaData map[reflect.Type]*SchemaMetaData
 	schemaTemplate *template.Template
+	schemaStack    []*SchemaMetaData
 
 	writeMethod, readMethod   *template.Template
 	writeContext, readContext reflect.Type
@@ -42,7 +43,6 @@ func NewContext(outputPath, packagePath, schemaTemplatePath string, writeContext
 		readMethod:     template.Must(template.New("ReadMethod").Parse(readingMethodSchema)),
 		outputPath:     outputPath,
 		packagePath:    packagePath,
-		imports:        make(map[string]struct{}),
 		schemaMetaData: make(map[reflect.Type]*SchemaMetaData),
 		writeContext:   writeContext,
 		readContext:    readContext,
@@ -51,9 +51,10 @@ func NewContext(outputPath, packagePath, schemaTemplatePath string, writeContext
 
 func (c *Context) RequestSchema(typ reflect.Type, name string) {
 	c.schemaMetaData[typ] = &SchemaMetaData{
-		Type: typ,
-		Name: name,
-		ID:   len(c.schemaMetaData),
+		Type:    typ,
+		Name:    name,
+		ID:      len(c.schemaMetaData),
+		Imports: make(map[string]struct{}),
 	}
 }
 
@@ -105,7 +106,7 @@ func (c *Context) UniqueToken() string {
 func (c *Context) FindSerializer(target Target) TypeSerializer {
 	n := len(c.serializers)
 	for i := n - 1; i >= 0; i-- {
-		if c.serializers[i].CanSerialize(target) {
+		if c.serializers[i].CanSerialize(c, target) {
 			return c.serializers[i]
 		}
 	}
@@ -115,17 +116,15 @@ func (c *Context) FindSerializer(target Target) TypeSerializer {
 // GetTypeName returns the name of the given type in the current context.
 // Its name may depend on the package name, hence this abstraction.
 func (c *Context) GetTypeName(typ reflect.Type) string {
-	pkgPath := typ.PkgPath()
-	if pkgPath == c.packagePath {
-		return typ.Name()
+	paths := ImportPaths(typ)
+	top := c.schemaStack[len(c.schemaStack)-1]
+	imports := top.Imports
+	for _, p := range paths {
+		if p != c.packagePath {
+			imports[p] = struct{}{}
+		}
 	}
-	idx := strings.LastIndex(pkgPath, "/")
-	if idx == -1 {
-		return typ.String()
-	}
-	c.imports[pkgPath] = struct{}{}
-	// return pkgPath[idx+1:len(pkgPath)] + "." + typ.String()
-	return typ.String()
+	return TypeName(typ, c.packagePath)
 }
 
 func (c *Context) packageName() string {
@@ -140,7 +139,7 @@ func (c *Context) packageName() string {
 func (c *Context) GetSchema(typ reflect.Type) *SchemaMetaData {
 	data, ok := c.schemaMetaData[typ]
 	if !ok {
-		c.RequestSchema(typ, c.UniqueToken()+"_"+typ.Name())
+		c.RequestSchema(typ, typ.Name()+"AutoGen")
 		data = c.schemaMetaData[typ]
 	}
 	if !data.inPreparation && !data.ready {
@@ -197,6 +196,7 @@ const readingMethodSchema = `func (schema *{{ .SchemaName }}Schema) Read{{ .Name
 
 func (c *Context) generateSchema(data *SchemaMetaData) error {
 	data.inPreparation = true
+	c.schemaStack = append(c.schemaStack, data)
 	size := uint32(0)
 	n := data.Type.NumField()
 	schemaFields := make([]schemaField, 0, n)
@@ -214,7 +214,8 @@ func (c *Context) generateSchema(data *SchemaMetaData) error {
 		target := Target{Type: field.Type, Tags: field.Tag}
 		serializer := c.FindSerializer(target)
 		if serializer == nil {
-			fmt.Printf("Ignoring field %v of %v because there is no serializer for its type %v\n", field.Name, data.Type.Name(), field.Type.Name())
+			fmt.Printf("Ignoring field %v of %v because there is no serializer for its type %v\n", field.Name, data.Type.String(), field.Type.String())
+			continue
 		}
 
 		writeByValue := serializer.WriteByValue()
@@ -272,8 +273,9 @@ func (c *Context) generateSchema(data *SchemaMetaData) error {
 	}
 	data.HeaderSize = size
 
+	targetTypeName := c.GetTypeName(data.Type)
 	var imports []string
-	for k := range c.imports {
+	for k := range data.Imports {
 		imports = append(imports, `"`+k+`"`)
 	}
 
@@ -286,7 +288,7 @@ func (c *Context) generateSchema(data *SchemaMetaData) error {
 			"NumFields":          len(schemaFields),
 			"WritingContextType": writingContextType,
 			"ReadingContextType": readingContextType,
-			"TargetType":         c.GetTypeName(data.Type),
+			"TargetType":         targetTypeName,
 			"Imports":            imports,
 			"Package":            c.packageName(),
 			"ID":                 data.ID,
@@ -298,6 +300,8 @@ func (c *Context) generateSchema(data *SchemaMetaData) error {
 	methodBuf.WriteTo(&buf)
 
 	data.ready = true
+
+	c.schemaStack = c.schemaStack[0 : len(c.schemaStack)-1]
 	data.inPreparation = false
 
 	return gotransform.WriteGoFile(filepath.Join(c.outputPath, data.Name+"_schema_gen.go"), &buf)

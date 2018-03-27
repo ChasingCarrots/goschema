@@ -90,7 +90,7 @@ func (is *InlineSerializer) SizeOf() uint32 {
 	return is.size
 }
 
-func (is *InlineSerializer) CanSerialize(target Target) bool {
+func (is *InlineSerializer) CanSerialize(context *Context, target Target) bool {
 	return is.Type == target.Type
 }
 

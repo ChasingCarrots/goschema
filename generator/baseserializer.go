@@ -116,7 +116,7 @@ func (b *BaseSerializer) SizeOf() uint32 {
 	return uint32(b.Type.Size())
 }
 
-func (b *BaseSerializer) CanSerialize(target Target) bool {
+func (b *BaseSerializer) CanSerialize(context *Context, target Target) bool {
 	return b.Type.Kind() == target.Type.Kind()
 }
 

@@ -14,15 +14,14 @@ type TypeSerializer interface {
 	MakeReadingCode(context *Context, ptrValueTarget bool, target Target, readerName, valueName string) string
 	MakeWritingCode(context *Context, ptrValueTarget bool, target Target, writerName, valueName string) string
 	SizeOf() uint32
-	CanSerialize(Target) bool
+	CanSerialize(*Context, Target) bool
 	TypeCode(Target) goschema.TypeCode
 	Initialize(*Context)
 }
 
 type Target struct {
-	Type       reflect.Type
-	Tags       reflect.StructTag
-	SchemaName string
+	Type reflect.Type
+	Tags reflect.StructTag
 }
 
 func TypeTarget(typ reflect.Type) Target {
