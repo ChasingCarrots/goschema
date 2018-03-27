@@ -17,7 +17,3 @@ type SchemaEntry struct {
 type Reference uint32
 
 const ReferenceSize = 4
-
-func (se SchemaEntry) IsValid() bool {
-	return se.Type != InvalidType
-}
