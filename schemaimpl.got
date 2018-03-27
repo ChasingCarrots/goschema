@@ -1,0 +1,112 @@
+package {{ .Package }}
+
+import (
+	"io"
+	"github.com/chasingcarrots/gobinary"
+	"github.com/chasingcarrots/goschema"
+{{ range .Imports }}
+	{{ . }}
+{{- end }}
+)
+
+const {{ .SchemaName }}SchemaID goschema.SchemaID = {{ .ID }}
+
+type {{ .SchemaName }}Schema struct {
+	{{ range .Fields -}}
+	{{ .Name }}Offset int
+	{{ end }}
+	descriptor []goschema.SchemaEntry
+}
+
+func New{{ .SchemaName }}Schema() *{{ .SchemaName }}Schema {
+	schema := {{ .SchemaName }}Schema {}
+	schema.init()
+	return &schema
+}
+
+func (schema *{{ .SchemaName }}Schema) ID() goschema.SchemaID {
+	return {{ .SchemaName }}SchemaID
+}
+
+func (schema *{{ .SchemaName }}Schema) Fill(entries []goschema.SchemaEntry) {
+	{{ range .Fields -}}
+	schema.{{ .Name }}Offset = -1
+	{{ end }}
+	for i := range entries {
+		switch entries[i].Name {
+{{- range .Fields }}
+		case "{{ .Name }}":
+			if entries[i].Type == goschema.TypeCode({{ .TypeCode }}) {
+				schema.{{ .Name }}Offset = int(entries[i].Offset)	
+			}
+{{- end }}
+		}
+	}
+}
+
+func (schema *{{ .SchemaName }}Schema) init() {
+	if schema.descriptor == nil {
+		schema.descriptor = make([]goschema.SchemaEntry, 0, {{ .NumFields }})
+{{- range .Fields }}
+		schema.descriptor = append(schema.descriptor,
+			goschema.SchemaEntry {
+				Name: "{{ .Name }}",
+				Type: goschema.TypeCode({{ .TypeCode }}),
+				Offset: {{ .Offset }},
+			},
+		)
+		schema.{{ .Name }}Offset = {{ .Offset }}
+{{- end }}
+	}
+}
+
+func (schema *{{ .SchemaName }}Schema) Describe() []goschema.SchemaEntry {
+	return schema.descriptor
+}
+
+func (schema *{{ .SchemaName }}Schema) ReadFrom(reader *goschema.SchemaReader, value *{{ .TargetType }}, context {{ .ReadingContextType }}) {
+{{- range .Fields }}
+	schema.Read{{ .Name }}Into(reader, &value.{{ .FieldName }}, context)
+{{- end }}
+}
+
+func (schema *{{ .SchemaName }}Schema) ReadFromFull(reader *goschema.SchemaReader, value *{{ .TargetType }}, context {{ .ReadingContextType }}) {
+	schemaIdx := int(reader.ReadUInt32())
+	existingSchema, schemaEntries := reader.FindSchema(int(schemaIdx))
+	existingSchemaProper, ok := existingSchema.(*{{ .SchemaName }}Schema)
+	if existingSchema == nil || !ok {
+		existingSchemaProper = schema
+		existingSchemaProper.Fill(schemaEntries)
+		reader.RegisterSchema(schemaIdx, existingSchemaProper)
+	}
+	originalBase := reader.Base()
+
+	length := int64(reader.ReadUInt32())
+	nextOffset := reader.GlobalOffset() + length
+	reader.ViewHere()
+	existingSchemaProper.ReadFrom(reader, value, context)
+	reader.Seek(reader.Local(nextOffset), io.SeekStart)
+	reader.View(reader.Local(originalBase))
+}
+
+func (schema *{{ .SchemaName }}Schema) WriteTo(writer *goschema.SchemaWriter, value *{{ .TargetType }}, context {{ .WritingContextType }}) {
+{{- range .Fields }}
+	schema.Write{{ .Name }}(writer, {{ .Reference }}value.{{ .FieldName }}, context)
+{{- end }}
+}
+
+func (schema *{{ .SchemaName }}Schema) WriteToFull(writer *goschema.SchemaWriter, value *{{ .TargetType }}, context {{ .WritingContextType }}) {
+	schemaIdx := writer.RegisterSchema(schema)
+	writer.WriteUInt32(uint32(schemaIdx))
+	originalBase := writer.Base()
+	writer.WriteUInt32(0) // reserved for size
+	writer.ViewHere()
+	startOffset := writer.GlobalOffset()
+	writer.Seek({{ .SchemaSize }}, io.SeekCurrent)
+	schema.WriteTo(writer, value, context)
+	endOffset := writer.GlobalOffset()
+	writer.Seek(writer.Local(startOffset - 4), io.SeekStart)
+	writer.WriteUInt32(uint32(endOffset - startOffset))
+	writer.View(writer.Local(originalBase))
+	writer.Seek(writer.Local(endOffset), io.SeekStart)
+}
