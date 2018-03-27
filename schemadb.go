@@ -9,8 +9,8 @@ type SchemaDB struct {
 	schemata    map[int]Schema
 }
 
-func NewSchemaDB() *SchemaDB {
-	return &SchemaDB{
+func MakeSchemaDB() SchemaDB {
+	return SchemaDB{
 		rawSchemata: make(map[int][]SchemaEntry),
 		schemata:    make(map[int]Schema),
 	}

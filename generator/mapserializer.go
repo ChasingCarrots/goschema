@@ -84,7 +84,7 @@ func (ms *MapSerializer) makeReadingProlog(context *Context, buf *bytes.Buffer, 
 		ms.readSchemaRegisterTemplate.Execute(buf, Lookup{
 			"Token":      token,
 			"Reader":     readerName,
-			"SchemaName": schema.Name + "Schema",
+			"SchemaName": schema.Name,
 		})
 		var readingCodeBuf bytes.Buffer
 		ms.readSchemaCoreTemplate.Execute(&readingCodeBuf, Lookup{
@@ -159,7 +159,7 @@ func (ms *MapSerializer) makeWritingProlog(context *Context, buf *bytes.Buffer, 
 		schema := context.GetSchema(typ)
 		ms.writeSchemaRegisterTemplate.Execute(buf, Lookup{
 			"Token":      token,
-			"SchemaName": schema.Name + "Schema",
+			"SchemaName": schema.Name,
 			"SchemaID":   schema.ID,
 			"Writer":     writerName,
 		})

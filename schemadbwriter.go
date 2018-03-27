@@ -12,11 +12,11 @@ type SchemaDBWriter struct {
 	originalOffset int64
 }
 
-func NewSchemaDBWriter(writer io.WriteSeeker) *SchemaDBWriter {
+func MakeSchemaDBWriter(writer io.WriteSeeker) SchemaDBWriter {
 	blob := gobinary.NewBufferedStreamWriter(writer, 1024)
 	// reserve 4 bytes for the number of schemas
 	blob.WriteUInt32(0)
-	return &SchemaDBWriter{
+	return SchemaDBWriter{
 		schemaIndex:    make(map[SchemaID]SchemaDataEntry),
 		schemaBlob:     blob,
 		originalOffset: blob.Offset() - 4,

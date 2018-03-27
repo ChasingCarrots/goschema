@@ -11,12 +11,11 @@ type SchemaReader struct {
 	schemaDB *SchemaDB
 }
 
-func NewSchemaReader(schemaDB *SchemaDB, reader io.ReadSeeker) *SchemaReader {
-	sw := SchemaReader{
+func MakeSchemaReader(schemaDB *SchemaDB, reader io.ReadSeeker) SchemaReader {
+	return SchemaReader{
 		StreamReaderView: gobinary.NewStreamReaderView(reader, 1024),
 		schemaDB:         schemaDB,
 	}
-	return &sw
 }
 
 // ReadReference reads a reference from the current position and seeks to

@@ -64,49 +64,62 @@ func (schema *{{ .SchemaName }}Schema) Describe() []goschema.SchemaEntry {
 	return schema.descriptor
 }
 
-func (schema *{{ .SchemaName }}Schema) ReadFrom(reader *goschema.SchemaReader, value *{{ .TargetType }}, context {{ .ReadingContextType }}) {
-{{- range .Fields }}
-	schema.Read{{ .Name }}Into(reader, &value.{{ .FieldName }}, context)
-{{- end }}
-}
-
-func (schema *{{ .SchemaName }}Schema) ReadFromFull(reader *goschema.SchemaReader, value *{{ .TargetType }}, context {{ .ReadingContextType }}) {
+func Read{{ .SchemaName }}Schema(reader *goschema.SchemaReader) *{{ .SchemaName }}Schema {
 	schemaIdx := int(reader.ReadUInt32())
 	existingSchema, schemaEntries := reader.FindSchema(int(schemaIdx))
-	existingSchemaProper, ok := existingSchema.(*{{ .SchemaName }}Schema)
+	schema, ok := existingSchema.(*{{ .SchemaName }}Schema)
 	if existingSchema == nil || !ok {
-		existingSchemaProper = schema
-		existingSchemaProper.Fill(schemaEntries)
-		reader.RegisterSchema(schemaIdx, existingSchemaProper)
+		schema = New{{ .SchemaName }}Schema()
+		schema.Fill(schemaEntries)
+		reader.RegisterSchema(schemaIdx, schema)
 	}
-	originalBase := reader.Base()
+	return schema
+}
 
-	length := int64(reader.ReadUInt32())
-	nextOffset := reader.GlobalOffset() + length
-	reader.ViewHere()
-	existingSchemaProper.ReadFrom(reader, value, context)
-	reader.Seek(reader.Local(nextOffset), io.SeekStart)
+func Write{{ .SchemaName }}Schema(writer *goschema.SchemaWriter) *{{ .SchemaName }}Schema {
+	schemaEntry, ok := writer.FindSchema(goschema.SchemaID({{ .SchemaName }}SchemaID))
+	schemaIdx := schemaEntry.Index()
+	schema, ok := schemaEntry.Schema().(*{{ .SchemaName }}Schema)
+	if !ok {
+		schema = New{{ .SchemaName }}Schema()
+		schemaIdx = writer.RegisterSchema(schema)
+	}
+	writer.WriteUInt32(uint32(schemaIdx))
+	return schema
+}
+
+func (schema *{{ .SchemaName }}Schema) SingleRead(reader *goschema.SchemaReader, value *{{ .TargetType }}, context {{ .ReadingContextType }}) {
+	originalBase := reader.Base()
+	schema.NakedRead(reader, value, context)
 	reader.View(reader.Local(originalBase))
 }
 
-func (schema *{{ .SchemaName }}Schema) WriteTo(writer *goschema.SchemaWriter, value *{{ .TargetType }}, context {{ .WritingContextType }}) {
+func (schema *{{ .SchemaName }}Schema) NakedRead(reader *goschema.SchemaReader, value *{{ .TargetType }}, context {{ .ReadingContextType }}) {
+	length := int64(reader.ReadUInt32())
+	nextOffset := reader.GlobalOffset() + length
+	reader.ViewHere()
 {{- range .Fields }}
-	schema.Write{{ .Name }}(writer, {{ .Reference }}value.{{ .FieldName }}, context)
+	schema.Read{{ .Name }}Into(reader, &value.{{ .FieldName }}, context)
 {{- end }}
+	reader.Seek(reader.Local(nextOffset), io.SeekStart)
 }
 
-func (schema *{{ .SchemaName }}Schema) WriteToFull(writer *goschema.SchemaWriter, value *{{ .TargetType }}, context {{ .WritingContextType }}) {
-	schemaIdx := writer.RegisterSchema(schema)
-	writer.WriteUInt32(uint32(schemaIdx))
+func (schema *{{ .SchemaName }}Schema) SingleWrite(writer *goschema.SchemaWriter, value *{{ .TargetType }}, context {{ .WritingContextType }}) {
 	originalBase := writer.Base()
+	schema.NakedWrite(writer, value, context)
+	writer.View(writer.Local(originalBase))
+}
+
+func (schema *{{ .SchemaName }}Schema) NakedWrite(writer *goschema.SchemaWriter, value *{{ .TargetType }}, context {{ .WritingContextType }}) {
 	writer.WriteUInt32(0) // reserved for size
 	writer.ViewHere()
 	startOffset := writer.GlobalOffset()
 	writer.Seek({{ .SchemaSize }}, io.SeekCurrent)
-	schema.WriteTo(writer, value, context)
+{{- range .Fields }}
+	schema.Write{{ .Name }}(writer, {{ .Reference }}value.{{ .FieldName }}, context)
+{{- end }}
 	endOffset := writer.GlobalOffset()
 	writer.Seek(writer.Local(startOffset - 4), io.SeekStart)
 	writer.WriteUInt32(uint32(endOffset - startOffset))
-	writer.View(writer.Local(originalBase))
 	writer.Seek(writer.Local(endOffset), io.SeekStart)
 }

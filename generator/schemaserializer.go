@@ -13,54 +13,20 @@ const schemaReadTemplate = schemaReadRegisterTemplate +
 	schemaReadCoreTemplate +
 	readRestoreBase
 
+const schemaReadRegisterTemplate = "{{ .Token }}Schema := Read{{ .SchemaName }}Schema({{ .Reader }})\n"
 const readSaveBase = "{{ .Token }}ViewBase := {{ .Reader }}.Base()\n"
+const schemaReadCoreTemplate = "{{ .Token }}Schema.NakedRead({{ .Reader }}, {{ .Reference }}{{ .SchemaValue }}, context)\n"
 const readRestoreBase = "{{ .Reader }}.View({{ .Reader }}.Local({{ .Token }}ViewBase))\n"
-
-const schemaReadCoreTemplate = `{{ .Token }}Length := int64({{ .Reader }}.ReadUInt32())
-{{ .Token }}NextOffset := {{ .Reader }}.GlobalOffset() + {{ .Token }}Length
-{{ .Reader }}.ViewHere()
-{{ .Token }}SchemaProper.ReadFrom({{ .Reader }}, {{ .Reference }}{{ .SchemaValue }}, context)
-{{ .Reader }}.Seek({{ .Reader }}.Local({{ .Token }}NextOffset), io.SeekStart)
-`
-
-const schemaReadRegisterTemplate = `{{ .Token }}SchemaIdx := {{ .Reader }}.ReadUInt32()
-{{ .Token }}Schema, {{ .Token }}SchemaEntries := {{ .Reader }}.FindSchema(int({{ .Token }}SchemaIdx))
-{{ .Token }}SchemaProper, ok := {{ .Token }}Schema.(*{{ .SchemaName }})
-if !ok || {{ .Token }}Schema == nil {
-	{{ .Token }}SchemaProper = New{{ .SchemaName }}()
-	{{ .Token }}SchemaProper.Fill({{ .Token }}SchemaEntries)
-	{{ .Reader }}.RegisterSchema(int({{ .Token }}SchemaIdx), {{ .Token }}SchemaProper)
-}
-`
 
 const schemaWriteTemplate = schemaWriteRegisterTemplate +
 	writeSaveBase +
 	schemaWriteCoreTemplate +
 	writeRestoreBase
 
+const schemaWriteRegisterTemplate = "{{ .Token }}Schema := Write{{ .SchemaName }}Schema({{ .Writer }})\n"
 const writeSaveBase = "{{ .Token }}ViewBase := {{ .Writer }}.Base()\n"
+const schemaWriteCoreTemplate = "{{ .Token }}Schema.NakedWrite({{ .Writer }}, {{ .Reference }}{{ .SchemaValue }}, context)\n"
 const writeRestoreBase = "{{ .Writer }}.View({{ .Writer }}.Local({{ .Token }}ViewBase))\n"
-
-const schemaWriteCoreTemplate = `{{ .Writer }}.WriteUInt32(0) // reserved for size
-{{ .Writer }}.ViewHere()
-{{ .Token }}StartOffset := {{ .Writer }}.GlobalOffset()
-{{ .Writer }}.Seek({{ .HeaderSize }}, io.SeekCurrent)
-{{ .Token }}Schema.WriteTo({{ .Writer }}, {{ .Reference }}{{ .SchemaValue }}, context)
-{{ .Token }}EndOffset := {{ .Writer }}.GlobalOffset()
-{{ .Writer }}.Seek({{ .Writer }}.Local({{ .Token }}StartOffset - 4), io.SeekStart)
-{{ .Writer }}.WriteUInt32(uint32({{ .Token }}EndOffset - {{ .Token }}StartOffset))
-{{ .Writer }}.Seek({{ .Writer }}.Local({{ .Token }}EndOffset), io.SeekStart)
-`
-
-const schemaWriteRegisterTemplate = `{{ .Token }}SchemaEntry, ok := {{ .Writer }}.FindSchema(goschema.SchemaID({{ .SchemaID }}))
-{{ .Token }}SchemaIdx := {{ .Token }}SchemaEntry.Index()
-{{ .Token }}Schema, ok := {{ .Token }}SchemaEntry.Schema().(*{{ .SchemaName }})
-if !ok {
-	{{ .Token }}Schema = New{{ .SchemaName }}()
-	{{ .Token }}SchemaIdx = {{ .Writer }}.RegisterSchema({{ .Token }}Schema)
-}
-{{ .Writer }}.WriteUInt32(uint32({{ .Token }}SchemaIdx))
-`
 
 type SchemaSerializer struct {
 	readTemplate  *template.Template
@@ -84,7 +50,7 @@ func (ss *SchemaSerializer) MakeReadingCode(context *Context, ptrValueTarget boo
 			"Token":       context.UniqueToken(),
 			"SchemaValue": valueName,
 			"Reader":      readerName,
-			"SchemaName":  schema.Name + "Schema",
+			"SchemaName":  schema.Name,
 			"Reference":   makeRef(ptrValueTarget),
 		},
 	)
@@ -101,7 +67,7 @@ func (ss *SchemaSerializer) MakeWritingCode(context *Context, ptrValueTarget boo
 			"Writer":      writerName,
 			"Reference":   makeRef(ptrValueTarget),
 			"SchemaID":    schema.ID,
-			"SchemaName":  schema.Name + "Schema",
+			"SchemaName":  schema.Name,
 			"HeaderSize":  schema.HeaderSize,
 		},
 	)
