@@ -1,6 +1,8 @@
 package goschema
 
 import (
+	"io"
+
 	"github.com/chasingcarrots/gobinary"
 )
 
@@ -32,15 +34,16 @@ func (sdb *SchemaDB) RegisterSchema(schemaIndex int, schema Schema) {
 	sdb.schemata[schemaIndex] = schema
 }
 
-func (sdb *SchemaDB) Fill(reader gobinary.HighLevelReader) {
-	n := int(reader.ReadUInt32())
+func (sdb *SchemaDB) Fill(reader io.Reader) {
+	hlr := gobinary.MakeHighLevelReader(reader)
+	n := int(hlr.ReadUInt32())
 	for s := 0; s < n; s++ {
-		length := int(reader.ReadUInt16())
+		length := int(hlr.ReadUInt16())
 		schema := make([]SchemaEntry, length, length)
 		for i := 0; i < length; i++ {
-			schema[i].Name = reader.ReadString(int(reader.ReadUInt16()))
-			schema[i].Type = TypeCode(reader.ReadUInt8())
-			schema[i].Offset = reader.ReadUInt32()
+			schema[i].Name = hlr.ReadString(int(hlr.ReadUInt16()))
+			schema[i].Type = TypeCode(hlr.ReadUInt8())
+			schema[i].Offset = hlr.ReadUInt32()
 		}
 		sdb.rawSchemata[s] = schema
 	}

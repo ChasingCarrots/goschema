@@ -1,21 +1,22 @@
 package goschema
 
 import (
-	"io"
-
 	"github.com/chasingcarrots/gobinary"
 )
 
 type SchemaWriter struct {
+	gobinary.HighLevelWriter
 	gobinary.StreamWriterView
 	schemaData *SchemaDBWriter
 }
 
-func MakeSchemaWriter(schemaData *SchemaDBWriter, writer io.WriteSeeker) SchemaWriter {
-	return SchemaWriter{
-		StreamWriterView: gobinary.NewStreamWriterView(writer, 1024),
+func MakeSchemaWriter(schemaData *SchemaDBWriter, stream *gobinary.StreamWriter) SchemaWriter {
+	sw := SchemaWriter{
 		schemaData:       schemaData,
+		StreamWriterView: gobinary.MakeStreamWriterView(stream),
 	}
+	sw.HighLevelWriter = gobinary.MakeHighLevelWriter(stream)
+	return sw
 }
 
 func (sw *SchemaWriter) FindSchema(id SchemaID) (SchemaDataEntry, bool) {

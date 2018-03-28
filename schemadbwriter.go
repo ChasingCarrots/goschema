@@ -8,19 +8,21 @@ import (
 
 type SchemaDBWriter struct {
 	schemaIndex    map[SchemaID]SchemaDataEntry
-	schemaBlob     *gobinary.BufferedStreamWriter
+	stream         *gobinary.StreamWriter
+	writer         gobinary.HighLevelWriter
 	originalOffset int64
 }
 
-func MakeSchemaDBWriter(writer io.WriteSeeker) SchemaDBWriter {
-	blob := gobinary.NewBufferedStreamWriter(writer, 1024)
-	// reserve 4 bytes for the number of schemas
-	blob.WriteUInt32(0)
-	return SchemaDBWriter{
+func MakeSchemaDBWriter(stream *gobinary.StreamWriter) SchemaDBWriter {
+	dbWriter := SchemaDBWriter{
 		schemaIndex:    make(map[SchemaID]SchemaDataEntry),
-		schemaBlob:     blob,
-		originalOffset: blob.Offset() - 4,
+		stream:         stream,
+		originalOffset: stream.Offset(),
+		writer:         gobinary.MakeHighLevelWriter(stream),
 	}
+	// reserve 4 bytes for the number of schemas
+	dbWriter.writer.WriteUInt32(0)
+	return dbWriter
 }
 
 func (sd *SchemaDBWriter) FindSchema(id SchemaID) (SchemaDataEntry, bool) {
@@ -33,12 +35,12 @@ func (sd *SchemaDBWriter) RegisterSchema(schema Schema) int {
 		return entry.index
 	}
 	entries := schema.Describe()
-	sd.schemaBlob.WriteUInt16(uint16(len(entries)))
+	sd.writer.WriteUInt16(uint16(len(entries)))
 	for i := range entries {
-		sd.schemaBlob.WriteUInt16(uint16(len(entries[i].Name)))
-		sd.schemaBlob.WriteString(entries[i].Name)
-		sd.schemaBlob.WriteUInt8(uint8(entries[i].Type))
-		sd.schemaBlob.WriteUInt32(entries[i].Offset)
+		sd.writer.WriteUInt16(uint16(len(entries[i].Name)))
+		sd.writer.WriteString(entries[i].Name)
+		sd.writer.WriteUInt8(uint8(entries[i].Type))
+		sd.writer.WriteUInt32(entries[i].Offset)
 	}
 	idx := len(sd.schemaIndex)
 	sd.schemaIndex[schema.ID()] = SchemaDataEntry{
@@ -49,13 +51,10 @@ func (sd *SchemaDBWriter) RegisterSchema(schema Schema) int {
 }
 
 func (sd *SchemaDBWriter) Close() {
-	sd.schemaBlob.Seek(sd.originalOffset, io.SeekStart)
-	sd.schemaBlob.WriteUInt32(uint32(len(sd.schemaIndex)))
-	sd.schemaBlob.Flush()
-}
-
-func (sd *SchemaDBWriter) Flush() {
-	sd.schemaBlob.Flush()
+	offset := sd.stream.Offset()
+	sd.stream.Seek(sd.originalOffset, io.SeekStart)
+	sd.writer.WriteUInt32(uint32(len(sd.schemaIndex)))
+	sd.stream.Seek(offset, io.SeekStart)
 }
 
 type SchemaDataEntry struct {
