@@ -10,13 +10,12 @@ type SchemaWriter struct {
 	schemaData *SchemaDBWriter
 }
 
-func MakeSchemaWriter(schemaData *SchemaDBWriter, stream *gobinary.StreamWriter) SchemaWriter {
-	sw := SchemaWriter{
+func MakeSchemaWriter(schemaData *SchemaDBWriter, streamView gobinary.StreamWriterView) SchemaWriter {
+	return SchemaWriter{
 		schemaData:       schemaData,
-		StreamWriterView: gobinary.MakeStreamWriterView(stream),
+		StreamWriterView: streamView,
+		HighLevelWriter:  gobinary.MakeHighLevelWriter(streamView),
 	}
-	sw.HighLevelWriter = gobinary.MakeHighLevelWriter(stream)
-	return sw
 }
 
 func (sw *SchemaWriter) FindSchema(id SchemaID) (SchemaDataEntry, bool) {
@@ -33,4 +32,8 @@ func (sw *SchemaWriter) WriteInt(value int) {
 
 func (sw *SchemaWriter) WriteUInt(value uint) {
 	sw.WriteUInt64(uint64(value))
+}
+
+func (sw *SchemaWriter) Write(p []byte) (int, error) {
+	return sw.StreamWriterView.Write(p)
 }

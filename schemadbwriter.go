@@ -20,8 +20,8 @@ func MakeSchemaDBWriter(stream *gobinary.StreamWriter) SchemaDBWriter {
 		originalOffset: stream.Offset(),
 		writer:         gobinary.MakeHighLevelWriter(stream),
 	}
-	// reserve 4 bytes for the number of schemas
-	dbWriter.writer.WriteUInt32(0)
+	// reserve 2 bytes for the number of schemas
+	dbWriter.writer.WriteUInt16(0)
 	return dbWriter
 }
 
@@ -53,7 +53,7 @@ func (sd *SchemaDBWriter) RegisterSchema(schema Schema) int {
 func (sd *SchemaDBWriter) Close() {
 	offset := sd.stream.Offset()
 	sd.stream.Seek(sd.originalOffset, io.SeekStart)
-	sd.writer.WriteUInt32(uint32(len(sd.schemaIndex)))
+	sd.writer.WriteUInt16(uint16(len(sd.schemaIndex)))
 	sd.stream.Seek(offset, io.SeekStart)
 }
 

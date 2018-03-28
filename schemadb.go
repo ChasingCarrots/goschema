@@ -36,7 +36,7 @@ func (sdb *SchemaDB) RegisterSchema(schemaIndex int, schema Schema) {
 
 func (sdb *SchemaDB) Fill(reader io.Reader) {
 	hlr := gobinary.MakeHighLevelReader(reader)
-	n := int(hlr.ReadUInt32())
+	n := int(hlr.ReadUInt16())
 	for s := 0; s < n; s++ {
 		length := int(hlr.ReadUInt16())
 		schema := make([]SchemaEntry, length, length)

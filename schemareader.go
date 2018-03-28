@@ -12,13 +12,12 @@ type SchemaReader struct {
 	schemaDB *SchemaDB
 }
 
-func MakeSchemaReader(schemaDB *SchemaDB, stream *gobinary.StreamReader) SchemaReader {
-	sr := SchemaReader{
+func MakeSchemaReader(schemaDB *SchemaDB, streamView gobinary.StreamReaderView) SchemaReader {
+	return SchemaReader{
 		schemaDB:         schemaDB,
-		StreamReaderView: gobinary.MakeStreamReaderView(stream),
+		StreamReaderView: streamView,
+		HighLevelReader:  gobinary.MakeHighLevelReader(streamView),
 	}
-	sr.HighLevelReader = gobinary.MakeHighLevelReader(stream)
-	return sr
 }
 
 // ReadReference reads a reference from the current position and seeks to
@@ -45,4 +44,8 @@ func (sr *SchemaReader) ReadInt() int {
 
 func (sr *SchemaReader) ReadUInt() uint64 {
 	return uint64(sr.ReadUInt64())
+}
+
+func (sr *SchemaReader) Read(p []byte) (int, error) {
+	return sr.Reader.Read(p)
 }
