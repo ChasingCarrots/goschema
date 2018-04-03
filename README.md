@@ -22,19 +22,19 @@ Then the following is the Go-program that should be used to generate the schema 
 package main
 
 import (
-	"path/filepath"
-	"reflect"
+    "path/filepath"
+    "reflect"
 
-	"github.com/chasingcarrots/goschema"
-	"github.com/chasingcarrots/goschema/generator"
+    "github.com/chasingcarrots/goschema"
+    "github.com/chasingcarrots/goschema/generator"
 )
 
 func main() {
     goPath, ok := os.LookupEnv("GOPATH")
-	if !ok {
-		fmt.Println("Could not find GOPATH in environment")
-		return
-	}
+    if !ok {
+        fmt.Println("Could not find GOPATH in environment")
+        return
+    }
     join := filepath.Join
     // the path of the go template that is used to generate schema files; it
     // comes with this package
@@ -43,20 +43,20 @@ func main() {
     outputPath := join(goPath, "src", "github.com/chasingcarrots/schematest/output")
     // the path of the package that the generated schemata should live in
     packagePath := "github.com/chasingcarrots/schematest/output"
-	gen := generator.NewContext(
-		"OUTPUT_DIRECTORY_FOR_SCHEMA_FILES",
-		packagePath,
+    gen := generator.NewContext(
+        outputPath,
+        packagePath,
         schemaTemplatePath,
         // These two types determine the types of additional context information
         // that is passed into reading and writing methods.
-		reflect.TypeOf(map[string]interface{}{}),
-		reflect.TypeOf(map[string]interface{}{}),
+        reflect.TypeOf(map[string]interface{}{}),
+        reflect.TypeOf(map[string]interface{}{}),
     )
     // add the default serializers to this schema generator
     gen.AddDefaultSerializers()
     // add the type that we want to serialize
-	gen.RequestSchema(reflect.TypeOf(subpkg.TestType{}), "TestType")
-	gen.Generate()
+    gen.RequestSchema(reflect.TypeOf(subpkg.TestType{}), "TestType")
+    gen.Generate()
 }
 ```
 
@@ -67,14 +67,14 @@ Now you can use the generated schema as follows:
 package main
 
 import (
-	"bytes"
-	"fmt"
+    "bytes"
+    "fmt"
 
-	"github.com/chasingcarrots/gobinary"
+    "github.com/chasingcarrots/gobinary"
 
-	"github.com/chasingcarrots/goschema"
-	"github.com/chasingcarrots/schematest/output"
-	"github.com/chasingcarrots/schematest/subpkg"
+    "github.com/chasingcarrots/goschema"
+    "github.com/chasingcarrots/schematest/output"
+    "github.com/chasingcarrots/schematest/subpkg"
 )
 
 func main() {
@@ -83,14 +83,14 @@ func main() {
     }
 
     // setup a byte buffer to hold the schema-descriptor that will be written out
-	var schemaDBBuf gobinary.WriteBuffer
-	schemaDBWriter := goschema.MakeSchemaDBWriter(gobinary.NewStreamWriter(&schemaDBBuf))
+    var schemaDBBuf gobinary.WriteBuffer
+    schemaDBWriter := goschema.MakeSchemaDBWriter(gobinary.NewStreamWriter(&schemaDBBuf))
 
     // setup a byte buffer for the serialized data
-	var schemaDataBuf gobinary.WriteBuffer
-	schemaWriter := goschema.MakeSchemaWriter(
-		&schemaDBWriter,
-		gobinary.MakeStreamWriterView(gobinary.NewStreamWriter(&schemaDataBuf)),
+    var schemaDataBuf gobinary.WriteBuffer
+    schemaWriter := goschema.MakeSchemaWriter(
+        &schemaDBWriter,
+        gobinary.MakeStreamWriterView(gobinary.NewStreamWriter(&schemaDataBuf)),
     )
     
     // acquire schema for our type, writing it to the database if required
@@ -104,25 +104,25 @@ func main() {
     schemaDBWriter.Close()
 
     // print out the contents of the byte buffers for manual verification
-	fmt.Println(schemaDataBuf.Bytes())
+    fmt.Println(schemaDataBuf.Bytes())
     fmt.Println(schemaDBBuf.Bytes())
     
     // read schema back in
     schemaDB := goschema.MakeSchemaDB()
     // use Fill to read schema descriptors
-	schemaDB.Fill(bytes.NewReader(schemaDBBuf.Bytes()))
-	schemaReader := goschema.MakeSchemaReader(
-		&schemaDB,
-		gobinary.MakeStreamReaderView(
-			gobinary.NewStreamReader(bytes.NewReader(schemaDataBuf.Bytes())),
-		),
+    schemaDB.Fill(bytes.NewReader(schemaDBBuf.Bytes()))
+    schemaReader := goschema.MakeSchemaReader(
+        &schemaDB,
+        gobinary.MakeStreamReaderView(
+            gobinary.NewStreamReader(bytes.NewReader(schemaDataBuf.Bytes())),
+        ),
     )
     
     // Deserialize the object that was written above
     testDeserialized := subpkg.TestType{}
     output.ReadTestTypeSchema(&schemaReader).SingleRead(&schemaReader, &testDeserialized, nil)
     // print out both objects
-	fmt.Println(test1, testDeserialized)
+    fmt.Println(test1, testDeserialized)
 }
 ```
 
