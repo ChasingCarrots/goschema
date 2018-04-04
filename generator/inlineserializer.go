@@ -37,15 +37,16 @@ func (is *InlineSerializer) Initialize(context *Context) {
 			fmt.Printf("Skipping anonymous field %v on %v\n", field.Type, is.Type.Name())
 			continue
 		}
-		serializer := context.FindSerializer(Target{
+		target := Target{
 			Type: field.Type,
 			Tags: field.Tag,
-		})
+		}
+		serializer := context.FindSerializer(target)
 		if serializer == nil {
 			fmt.Printf("Ignoring field %v on %v because there is no serializer for its type %v\n", field.Name, is.Type.String(), field.Type)
 			continue
 		}
-		size += serializer.SizeOf()
+		size += serializer.SizeOf(context, target)
 		is.fields = append(is.fields, inlineSerializerEntry{
 			serializer: serializer,
 			field:      field,
@@ -86,7 +87,7 @@ func (is *InlineSerializer) MakeWritingCode(context *Context, ptrValueTarget boo
 	return buf.String()
 }
 
-func (is *InlineSerializer) SizeOf() uint32 {
+func (is *InlineSerializer) SizeOf(*Context, Target) uint32 {
 	return is.size
 }
 
@@ -94,14 +95,14 @@ func (is *InlineSerializer) CanSerialize(context *Context, target Target) bool {
 	return is.Type == target.Type
 }
 
-func (*InlineSerializer) IsVariableSize() bool {
+func (*InlineSerializer) IsVariableSize(*Context, Target) bool {
 	return false
 }
 
-func (is *InlineSerializer) WriteByValue() bool {
+func (is *InlineSerializer) WriteByValue(*Context, Target) bool {
 	return is.size <= 8
 }
 
-func (is *InlineSerializer) TypeCode(Target) goschema.TypeCode {
+func (is *InlineSerializer) TypeCode(*Context, Target) goschema.TypeCode {
 	return is.code
 }

@@ -76,7 +76,7 @@ func (ls *ListSerializer) MakeReadingCode(context *Context, ptrValueTarget bool,
 	token := context.UniqueToken()
 	var buf bytes.Buffer
 	innerValueName := token + "Slice[" + token + "I]"
-	if serializer.TypeCode(innerType) == goschema.SchemaType {
+	if serializer.TypeCode(context, innerType) == goschema.SchemaType {
 		schema := context.GetSchema(target.Type.Elem())
 		ls.readSchemaTemplate.Execute(&buf,
 			Lookup{
@@ -115,7 +115,7 @@ func (ls *ListSerializer) MakeWritingCode(context *Context, ptrValueTarget bool,
 	token := context.UniqueToken()
 	var buf bytes.Buffer
 	innerValueName := valueName + "[" + token + "I]"
-	if serializer.TypeCode(innerType) == goschema.SchemaType {
+	if serializer.TypeCode(context, innerType) == goschema.SchemaType {
 		schema := context.GetSchema(target.Type.Elem())
 		ls.writeSchemaTemplate.Execute(&buf,
 			Lookup{
@@ -138,7 +138,7 @@ func (ls *ListSerializer) MakeWritingCode(context *Context, ptrValueTarget bool,
 				"Token":            token,
 				"ListValue":        valueName,
 				"Writer":           writerName,
-				"TypeCode":         serializer.TypeCode(innerType),
+				"TypeCode":         serializer.TypeCode(context, innerType),
 				"InnerWritingCode": innerWritingCode,
 				"Dereference":      makeDeref(ptrValueTarget),
 			},
@@ -147,7 +147,7 @@ func (ls *ListSerializer) MakeWritingCode(context *Context, ptrValueTarget bool,
 	return buf.String()
 }
 
-func (*ListSerializer) SizeOf() uint32 {
+func (*ListSerializer) SizeOf(*Context, Target) uint32 {
 	return 4
 }
 
@@ -158,14 +158,14 @@ func (*ListSerializer) CanSerialize(context *Context, target Target) bool {
 	return context.FindSerializer(TypeTarget(target.Type.Elem())) != nil
 }
 
-func (*ListSerializer) IsVariableSize() bool {
+func (*ListSerializer) IsVariableSize(*Context, Target) bool {
 	return true
 }
 
-func (*ListSerializer) WriteByValue() bool {
+func (*ListSerializer) WriteByValue(*Context, Target) bool {
 	return true
 }
 
-func (*ListSerializer) TypeCode(Target) goschema.TypeCode {
+func (*ListSerializer) TypeCode(*Context, Target) goschema.TypeCode {
 	return goschema.ListType
 }

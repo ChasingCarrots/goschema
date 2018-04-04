@@ -78,9 +78,6 @@ func getMethodName(typ reflect.Type) string {
 func (is *BaseSerializer) Initialize(context *Context) {}
 
 func (b *BaseSerializer) MakeReadingCode(context *Context, ptrValueTarget bool, target Target, readerName, valueName string) string {
-	if b.readTemplate == nil {
-		b.readTemplate = template.Must(template.New("Read").Parse(baseReadTemplate))
-	}
 	var buf bytes.Buffer
 	b.readTemplate.Execute(&buf,
 		Lookup{
@@ -96,9 +93,6 @@ func (b *BaseSerializer) MakeReadingCode(context *Context, ptrValueTarget bool, 
 }
 
 func (b *BaseSerializer) MakeWritingCode(context *Context, ptrValueTarget bool, target Target, writerName, valueName string) string {
-	if b.writeTemplate == nil {
-		b.writeTemplate = template.Must(template.New("Write").Parse(baseWriteTemplate))
-	}
 	var buf bytes.Buffer
 	b.writeTemplate.Execute(&buf,
 		Lookup{
@@ -112,7 +106,7 @@ func (b *BaseSerializer) MakeWritingCode(context *Context, ptrValueTarget bool, 
 	return buf.String()
 }
 
-func (b *BaseSerializer) SizeOf() uint32 {
+func (b *BaseSerializer) SizeOf(*Context, Target) uint32 {
 	return uint32(b.Type.Size())
 }
 
@@ -120,15 +114,15 @@ func (b *BaseSerializer) CanSerialize(context *Context, target Target) bool {
 	return b.Type.Kind() == target.Type.Kind()
 }
 
-func (*BaseSerializer) IsVariableSize() bool {
+func (*BaseSerializer) IsVariableSize(*Context, Target) bool {
 	return false
 }
 
-func (*BaseSerializer) WriteByValue() bool {
+func (*BaseSerializer) WriteByValue(*Context, Target) bool {
 	return true
 }
 
-func (*BaseSerializer) TypeCode(target Target) goschema.TypeCode {
+func (*BaseSerializer) TypeCode(context *Context, target Target) goschema.TypeCode {
 	switch target.Type.Kind() {
 	case reflect.Bool:
 		return goschema.BoolType

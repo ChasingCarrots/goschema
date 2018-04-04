@@ -77,7 +77,7 @@ func (ms *MapSerializer) makeReadingProlog(context *Context, buf *bytes.Buffer, 
 	buf.WriteString("_ = ")
 	buf.WriteString(readerName)
 	buf.WriteString(".ReadUInt8() // ignore typecode\n")
-	isSchema := serializer.TypeCode(target) == goschema.SchemaType
+	isSchema := serializer.TypeCode(context, target) == goschema.SchemaType
 	if isSchema {
 		schema := context.GetSchema(typ)
 		token := context.UniqueToken()
@@ -101,9 +101,6 @@ func (ms *MapSerializer) makeReadingProlog(context *Context, buf *bytes.Buffer, 
 }
 
 func (ms *MapSerializer) MakeReadingCode(context *Context, ptrValueTarget bool, target Target, readerName, valueName string) string {
-	if ms.readTemplate == nil {
-		ms.readTemplate = template.Must(template.New("Read").Parse(mapReadTemplate))
-	}
 	var buf bytes.Buffer
 	token := context.UniqueToken()
 
@@ -149,7 +146,7 @@ func (ms *MapSerializer) makeWritingProlog(context *Context, buf *bytes.Buffer, 
 	}
 
 	var writingCode string
-	typeCode := serializer.TypeCode(target)
+	typeCode := serializer.TypeCode(context, target)
 	isSchema := typeCode == goschema.SchemaType
 	buf.WriteString(writerName)
 	buf.WriteString(".WriteUInt8(uint8(goschema.TypeCode(")
@@ -179,10 +176,6 @@ func (ms *MapSerializer) makeWritingProlog(context *Context, buf *bytes.Buffer, 
 }
 
 func (ms *MapSerializer) MakeWritingCode(context *Context, ptrValueTarget bool, target Target, writerName, valueName string) string {
-	if ms.writeTemplate == nil {
-		ms.writeTemplate = template.Must(template.New("Write").Parse(mapWriteTemplate))
-	}
-
 	var buf bytes.Buffer
 	token := context.UniqueToken()
 	mapKeyName := token + "Key"
@@ -218,7 +211,7 @@ func (ms *MapSerializer) MakeWritingCode(context *Context, ptrValueTarget bool, 
 	return buf.String()
 }
 
-func (*MapSerializer) SizeOf() uint32 {
+func (*MapSerializer) SizeOf(*Context, Target) uint32 {
 	return 4
 }
 
@@ -230,14 +223,14 @@ func (*MapSerializer) CanSerialize(context *Context, target Target) bool {
 		context.FindSerializer(TypeTarget(target.Type.Key())) != nil
 }
 
-func (*MapSerializer) IsVariableSize() bool {
+func (*MapSerializer) IsVariableSize(*Context, Target) bool {
 	return true
 }
 
-func (*MapSerializer) WriteByValue() bool {
+func (*MapSerializer) WriteByValue(*Context, Target) bool {
 	return true
 }
 
-func (*MapSerializer) TypeCode(Target) goschema.TypeCode {
+func (*MapSerializer) TypeCode(*Context, Target) goschema.TypeCode {
 	return goschema.MapType
 }

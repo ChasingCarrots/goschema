@@ -62,7 +62,7 @@ func (ss *StringSerializer) MakeWritingCode(context *Context, ptrValueTarget boo
 	return buf.String()
 }
 
-func (*StringSerializer) SizeOf() uint32 {
+func (*StringSerializer) SizeOf(*Context, Target) uint32 {
 	return 4
 }
 
@@ -70,14 +70,14 @@ func (*StringSerializer) CanSerialize(context *Context, target Target) bool {
 	return target.Type.Kind() == reflect.String
 }
 
-func (*StringSerializer) IsVariableSize() bool {
+func (*StringSerializer) IsVariableSize(*Context, Target) bool {
 	return true
 }
 
-func (*StringSerializer) WriteByValue() bool {
+func (*StringSerializer) WriteByValue(*Context, Target) bool {
 	return true
 }
 
-func (*StringSerializer) TypeCode(Target) goschema.TypeCode {
+func (*StringSerializer) TypeCode(*Context, Target) goschema.TypeCode {
 	return goschema.StringType
 }

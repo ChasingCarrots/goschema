@@ -74,7 +74,7 @@ func (ss *SchemaSerializer) MakeWritingCode(context *Context, ptrValueTarget boo
 	return buf.String()
 }
 
-func (*SchemaSerializer) SizeOf() uint32 {
+func (*SchemaSerializer) SizeOf(*Context, Target) uint32 {
 	return 4
 }
 
@@ -82,14 +82,14 @@ func (*SchemaSerializer) CanSerialize(context *Context, target Target) bool {
 	return target.Type.Kind() == reflect.Struct
 }
 
-func (*SchemaSerializer) IsVariableSize() bool {
+func (*SchemaSerializer) IsVariableSize(*Context, Target) bool {
 	return true
 }
 
-func (*SchemaSerializer) WriteByValue() bool {
+func (*SchemaSerializer) WriteByValue(*Context, Target) bool {
 	return false
 }
 
-func (*SchemaSerializer) TypeCode(Target) goschema.TypeCode {
+func (*SchemaSerializer) TypeCode(*Context, Target) goschema.TypeCode {
 	return goschema.SchemaType
 }

@@ -9,13 +9,13 @@ import (
 type Lookup = map[string]interface{}
 
 type TypeSerializer interface {
-	IsVariableSize() bool
-	WriteByValue() bool
+	IsVariableSize(*Context, Target) bool
+	WriteByValue(*Context, Target) bool
 	MakeReadingCode(context *Context, ptrValueTarget bool, target Target, readerName, valueName string) string
 	MakeWritingCode(context *Context, ptrValueTarget bool, target Target, writerName, valueName string) string
-	SizeOf() uint32
+	SizeOf(*Context, Target) uint32
 	CanSerialize(*Context, Target) bool
-	TypeCode(Target) goschema.TypeCode
+	TypeCode(*Context, Target) goschema.TypeCode
 	Initialize(*Context)
 }
 
