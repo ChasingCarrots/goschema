@@ -218,7 +218,7 @@ func (c *Context) generateSchema(data *SchemaMetaData) error {
 			continue
 		}
 
-		writeByValue := serializer.WriteByValue()
+		writeByValue := serializer.WriteByValue(c, target)
 		writeCode := serializer.MakeWritingCode(c, !writeByValue, target, "writer", "value")
 		readCode := serializer.MakeReadingCode(c, true, target, "reader", "value")
 
@@ -233,7 +233,7 @@ func (c *Context) generateSchema(data *SchemaMetaData) error {
 		defaultValue := tag(field.Tag, "schemaDefault", "")
 		readingType := c.GetTypeName(field.Type)
 		isInPlace := "yes"
-		if serializer.IsVariableSize() {
+		if serializer.IsVariableSize(c, target) {
 			isInPlace = ""
 		}
 
@@ -264,12 +264,12 @@ func (c *Context) generateSchema(data *SchemaMetaData) error {
 				Name:      serializedName,
 				FieldName: field.Name,
 				Offset:    size,
-				TypeCode:  serializer.TypeCode(target), // TODO compute type code
+				TypeCode:  serializer.TypeCode(c, target),
 				Reference: reference,
 			},
 		)
 
-		size += serializer.SizeOf()
+		size += serializer.SizeOf(c, target)
 	}
 	data.HeaderSize = size
 
