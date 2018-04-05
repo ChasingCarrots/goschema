@@ -76,6 +76,7 @@ func (c *Context) AddDefaultSerializers() {
 		NewStringSerializer(),
 		NewListSerializer(),
 		NewMapSerializer(),
+		NewPointerSerializer(),
 	)
 }
 
@@ -120,7 +121,7 @@ func (c *Context) GetTypeName(typ reflect.Type) string {
 	top := c.schemaStack[len(c.schemaStack)-1]
 	imports := top.Imports
 	for _, p := range paths {
-		if p != c.packagePath {
+		if p != c.packagePath && len(p) > 0 {
 			imports[p] = struct{}{}
 		}
 	}
@@ -233,7 +234,8 @@ func (c *Context) generateSchema(data *SchemaMetaData) error {
 		defaultValue := tag(field.Tag, "schemaDefault", "")
 		readingType := c.GetTypeName(field.Type)
 		isInPlace := "yes"
-		if serializer.IsVariableSize(c, target) {
+		variableSize := serializer.IsVariableSize(c, target)
+		if variableSize {
 			isInPlace = ""
 		}
 
@@ -269,7 +271,11 @@ func (c *Context) generateSchema(data *SchemaMetaData) error {
 			},
 		)
 
-		size += serializer.SizeOf(c, target)
+		if variableSize {
+			size += goschema.ReferenceSize
+		} else {
+			size += serializer.SizeOf(c, target)
+		}
 	}
 	data.HeaderSize = size
 

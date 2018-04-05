@@ -17,7 +17,7 @@ const listReadCoreTemplate_B = `}
 {{ .Dereference }}{{ .ListValue }} = {{ .Token }}Slice
 `
 
-const listWriteCoreTemplate_A = `{{ .Token }}Length := len({{ .Dereference }}{{ .ListValue }})
+const listWriteCoreTemplate = `{{ .Token }}Length := len({{ .Dereference }}{{ .ListValue }})
 {{ .Writer }}.WriteUInt32(uint32({{ .Token }}Length))
 for {{ .Token }}I := 0; {{ .Token }}I < {{ .Token }}Length; {{ .Token }}I++ {
 `
@@ -36,14 +36,14 @@ const schemaListReadTemplate = "_ = {{ .Reader }}.ReadUInt8() // ignore typecode
 	readRestoreBase
 
 const basicListWriteTemplate = "{{ .Writer }}.WriteUInt8(uint8(goschema.TypeCode({{ .TypeCode }})))\n" +
-	listWriteCoreTemplate_A +
+	listWriteCoreTemplate +
 	"{{ .InnerWritingCode }}\n" +
 	"}\n"
 
 const schemaListWriteTemplate = "{{ .Writer }}.WriteUInt8(uint8(goschema.TypeCode({{ .TypeCode }})))\n" +
 	writeSaveBase +
 	schemaWriteRegisterTemplate +
-	listWriteCoreTemplate_A +
+	listWriteCoreTemplate +
 	schemaWriteCoreTemplate +
 	"}\n" +
 	writeRestoreBase
@@ -155,7 +155,8 @@ func (*ListSerializer) CanSerialize(context *Context, target Target) bool {
 	if target.Type.Kind() != reflect.Slice && target.Type.Kind() != reflect.Array {
 		return false
 	}
-	return context.FindSerializer(TypeTarget(target.Type.Elem())) != nil
+	target.Type = target.Type.Elem()
+	return context.FindSerializer(target) != nil
 }
 
 func (*ListSerializer) IsVariableSize(*Context, Target) bool {

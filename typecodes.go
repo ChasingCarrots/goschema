@@ -20,5 +20,6 @@ const (
 	Float64Type  TypeCode = 0xE
 	BoolType     TypeCode = 0xF
 	StringType   TypeCode = 0x10
-	NumTypeCodes TypeCode = 0x11
+	PointerType  TypeCode = 0x11
+	NumTypeCodes TypeCode = 0x12
 )

@@ -30,7 +30,7 @@ func TypeName(typ reflect.Type, pkgPath string) string {
 			panic("Functions not implemented")
 		default:
 			path := typ.PkgPath()
-			if len(path) == 0 || path == pkgPath {
+			if path == pkgPath {
 				return name + typ.Name()
 			}
 			return name + typ.String()
@@ -38,7 +38,7 @@ func TypeName(typ reflect.Type, pkgPath string) string {
 	}
 }
 
-// importPaths collect all paths that are required to use a type.
+// importPaths collect all import paths that are required to use a type.
 func ImportPaths(typ reflect.Type) []string {
 	stack := []reflect.Type{typ}
 	paths := make(map[string]struct{})

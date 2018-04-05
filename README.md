@@ -154,10 +154,10 @@ There are three tags that can be applied to fields in a struct to influence seri
 ```golang
 gen.AddDefaultSerializers()
 gen.AddSerializers(
-    generator.NewInlineSerializer(reflect.TypeOf(subtest.Vector2{}), goschema.TypeCode(goschema.NumTypeCodes)),
+    generator.NewInlineSerializer(reflect.TypeOf(subtest.Vector2{}), goschema.TypeCode(255)),
 )
 ```
-In this example, `goschema.NumTypeCodes` is the least `TypeCode` not in use by the basic primitive types, so using it for the `Vector2` is fine.
+In this example, the type code chosen is 255 (typecodes are 8bit integers). We recommend starting with the highest values and working your way backwards as to not be disturbed by updates to the library that add new lower typecodes (`goschema.NumTypeCodes` is the least `TypeCode` not in use by the basic primitive types, but it may change over time).
 To implement custom serializers, take a look at the files in the `generator` directory, especially the `serializer.go` file which contains the interface that serializers need to implement. Your custom serializers can make use of the context value passed to reading and writing methods by using the name `context`. They also have access to all tags declared on fields that they are used on.
 
 Note that the order in which serializers are added to a generator context is very important. When looking for a serializer to use, the least recently added serializers are queried first until a match is found. As such, it is always a good idea to add the default serializers first.
