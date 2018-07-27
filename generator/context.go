@@ -3,12 +3,9 @@ package generator
 import (
 	"bytes"
 	"fmt"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"text/template"
-
-	"github.com/chasingcarrots/gotransform"
 
 	"github.com/chasingcarrots/goschema"
 )
@@ -22,8 +19,12 @@ type SchemaMetaData struct {
 	ready, inPreparation bool
 }
 
+type SchemaOutputWriter interface {
+	Write(name string, buf *bytes.Buffer) error
+}
+
 type Context struct {
-	outputPath   string
+	outputWriter SchemaOutputWriter
 	packagePath  string // path of the package for the output files
 	serializers  []TypeSerializer
 	tokenCounter int
@@ -36,12 +37,12 @@ type Context struct {
 	writeContext, readContext reflect.Type
 }
 
-func NewContext(outputPath, packagePath, schemaTemplatePath string, writeContext, readContext reflect.Type) *Context {
+func NewContext(outputWriter SchemaOutputWriter, packagePath, schemaTemplatePath string, writeContext, readContext reflect.Type) *Context {
 	return &Context{
 		schemaTemplate: template.Must(template.ParseFiles(schemaTemplatePath)),
 		writeMethod:    template.Must(template.New("WriteMethod").Parse(writingMethodSchema)),
 		readMethod:     template.Must(template.New("ReadMethod").Parse(readingMethodSchema)),
-		outputPath:     outputPath,
+		outputWriter:   outputWriter,
 		packagePath:    packagePath,
 		schemaMetaData: make(map[reflect.Type]*SchemaMetaData),
 		writeContext:   writeContext,
@@ -310,7 +311,7 @@ func (c *Context) generateSchema(data *SchemaMetaData) error {
 	c.schemaStack = c.schemaStack[0 : len(c.schemaStack)-1]
 	data.inPreparation = false
 
-	return gotransform.WriteGoFile(filepath.Join(c.outputPath, data.Name+"_schema_gen.go"), &buf)
+	return c.outputWriter.Write(data.Name, &buf)
 }
 
 func tag(tags reflect.StructTag, key, defaultValue string) string {
